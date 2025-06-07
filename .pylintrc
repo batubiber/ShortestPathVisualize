@@ -1,0 +1,14 @@
+[MASTER]
+init-hook='import sys; sys.path.append(".")'
+
+[MESSAGES CONTROL]
+disable=C0103,  # invalid-name (for module names)
+        R0902,  # too-many-instance-attributes
+        R0912,  # too-many-branches
+        R1702,  # too-many-nested-blocks
+
+; [FORMAT]
+; max-line-length=120
+
+; [BASIC]
+; good-names=i,j,k,ex,Run,_,id,x,y

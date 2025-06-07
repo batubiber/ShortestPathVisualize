@@ -1,184 +1,221 @@
-import heapq
+"""
+Pathfinding algorithms implementation module.
+
+This module contains implementations of various pathfinding algorithms:
+- A* Algorithm
+- Dijkstra's Algorithm
+- Greedy Best-First Search
+"""
+
+from typing import List, Tuple
 import numpy as np
-from typing import List, Set, Tuple, Optional
-from collections import deque
 
 class PathfindingAlgorithm:
-    def __init__(self):
-        # Separate directions for straight and diagonal movement
-        self.straight_directions = [(0, 1), (1, 0), (0, -1), (-1, 0)]
-        self.diagonal_directions = [(1, 1), (1, -1), (-1, 1), (-1, -1)]
+    """Base class for pathfinding algorithms."""
 
-    def is_valid(self, grid: np.ndarray, pos: Tuple[int, int]) -> bool:
-        rows, cols = grid.shape
+    def find_path(self,
+                  grid: np.ndarray,
+                  start: Tuple[int, int],
+                  target: Tuple[int, int]) -> Tuple[List[Tuple[int, int]], List[Tuple[int, int]]]:
+        """
+        Find a path from start to target in the given grid.
+        
+        Args:
+            grid: 2D numpy array representing the grid (0 for empty, 1 for obstacle)
+            start: Starting position (row, col)
+            target: Target position (row, col)
+            
+        Returns:
+            Tuple containing:
+            - List of positions forming the path
+            - List of visited positions
+        """
+        raise NotImplementedError
+
+    def get_neighbors(self, pos: Tuple[int, int], grid: np.ndarray) -> List[Tuple[int, int]]:
+        """
+        Get valid neighboring positions for a given position.
+        
+        Args:
+            pos: Current position (row, col)
+            grid: 2D numpy array representing the grid
+            
+        Returns:
+            List of valid neighboring positions
+        """
         row, col = pos
-        return 0 <= row < rows and 0 <= col < cols and grid[row][col] == 0
-
-    def can_move_diagonally(self, grid: np.ndarray, current: Tuple[int, int], target: Tuple[int, int]) -> bool:
-        # Check if both adjacent cells are free for diagonal movement
-        dx = target[0] - current[0]
-        dy = target[1] - current[1]
-        
-        # Check the two adjacent cells
-        if dx == 1 and dy == 1:  # Moving down-right
-            return self.is_valid(grid, (current[0], current[1] + 1)) and self.is_valid(grid, (current[0] + 1, current[1]))
-        elif dx == 1 and dy == -1:  # Moving down-left
-            return self.is_valid(grid, (current[0], current[1] - 1)) and self.is_valid(grid, (current[0] + 1, current[1]))
-        elif dx == -1 and dy == 1:  # Moving up-right
-            return self.is_valid(grid, (current[0], current[1] + 1)) and self.is_valid(grid, (current[0] - 1, current[1]))
-        elif dx == -1 and dy == -1:  # Moving up-left
-            return self.is_valid(grid, (current[0], current[1] - 1)) and self.is_valid(grid, (current[0] - 1, current[1]))
-        return True
-
-    def get_neighbors(self, grid: np.ndarray, pos: Tuple[int, int]) -> List[Tuple[int, int]]:
+        rows, cols = grid.shape
         neighbors = []
-        
-        # Add straight movement neighbors
-        for dx, dy in self.straight_directions:
-            new_pos = (pos[0] + dx, pos[1] + dy)
-            if self.is_valid(grid, new_pos):
-                neighbors.append(new_pos)
-        
-        # Add diagonal movement neighbors if possible
-        for dx, dy in self.diagonal_directions:
-            new_pos = (pos[0] + dx, pos[1] + dy)
-            if self.is_valid(grid, new_pos) and self.can_move_diagonally(grid, pos, new_pos):
-                neighbors.append(new_pos)
-        
+        # Check all 8 directions
+        for dr in [-1, 0, 1]:
+            for dc in [-1, 0, 1]:
+                if dr == 0 and dc == 0:
+                    continue
+                new_row, new_col = row + dr, col + dc
+                if (0 <= new_row < rows and 0 <= new_col < cols and
+                    grid[new_row][new_col] == 0):
+                    neighbors.append((new_row, new_col))
         return neighbors
 
-    def heuristic(self, a: Tuple[int, int], b: Tuple[int, int]) -> float:
-        return np.sqrt((a[0] - b[0])**2 + (a[1] - b[1])**2)
+    def heuristic(self, pos: Tuple[int, int], target: Tuple[int, int]) -> float:
+        """
+        Calculate heuristic value between two positions.
+        
+        Args:
+            pos: Current position (row, col)
+            target: Target position (row, col)
+            
+        Returns:
+            Heuristic value (Euclidean distance)
+        """
+        return ((pos[0] - target[0]) ** 2 + (pos[1] - target[1]) ** 2) ** 0.5
 
 class AStar(PathfindingAlgorithm):
-    def find_path(self, grid: np.ndarray, start: Tuple[int, int], 
-                 target: Tuple[int, int]) -> Tuple[List[Tuple[int, int]], List[Tuple[int, int]]]:
-        if not self.is_valid(grid, target):
-            return [], []
+    """A* pathfinding algorithm implementation."""
 
-        open_set = []
-        closed_set = set()
+    def find_path(self,
+                  grid: np.ndarray,
+                  start: Tuple[int, int],
+                  target: Tuple[int, int]) -> Tuple[List[Tuple[int, int]], List[Tuple[int, int]]]:
+        """
+        Find path using A* algorithm.
+        
+        Args:
+            grid: 2D numpy array representing the grid
+            start: Starting position (row, col)
+            target: Target position (row, col)
+            
+        Returns:
+            Tuple containing:
+            - List of positions forming the path
+            - List of visited positions
+        """
+        visited = []
         came_from = {}
         g_score = {start: 0}
         f_score = {start: self.heuristic(start, target)}
-        visited = []  # Changed to list to maintain order
-
-        heapq.heappush(open_set, (f_score[start], start))
+        open_set = {start}
 
         while open_set:
-            current = heapq.heappop(open_set)[1]
-            visited.append(current)  # Add to visited list in order
-
+            current = min(open_set, key=lambda x: f_score.get(x, float('inf')))
+            # If the current position is the target, we have found the path
             if current == target:
-                path = self.reconstruct_path(came_from, current)
+                path = []
+                while current in came_from:
+                    path.append(current)
+                    current = came_from[current]
+                path.append(start)
+                path.reverse()
                 return path, visited
 
-            closed_set.add(current)
+            # Remove the current position from the open set
+            open_set.remove(current)
+            visited.append(current)
 
-            for neighbor in self.get_neighbors(grid, current):
-                if neighbor in closed_set:
-                    continue
-
-                # Calculate distance based on whether it's diagonal or straight movement
-                is_diagonal = abs(neighbor[0] - current[0]) == 1 and abs(neighbor[1] - current[1]) == 1
-                distance = np.sqrt(2) if is_diagonal else 1
-                tentative_g_score = g_score[current] + distance
+            for neighbor in self.get_neighbors(current, grid):
+                tentative_g_score = g_score[current] + self.heuristic(current, neighbor)
 
                 if neighbor not in g_score or tentative_g_score < g_score[neighbor]:
                     came_from[neighbor] = current
                     g_score[neighbor] = tentative_g_score
-                    f_score[neighbor] = g_score[neighbor] + self.heuristic(neighbor, target)
-                    heapq.heappush(open_set, (f_score[neighbor], neighbor))
+                    f_score[neighbor] = tentative_g_score + self.heuristic(neighbor, target)
+                    if neighbor not in open_set:
+                        open_set.add(neighbor)
 
         return [], visited
-
-    def reconstruct_path(self, came_from: dict, current: Tuple[int, int]) -> List[Tuple[int, int]]:
-        path = [current]
-        while current in came_from:
-            current = came_from[current]
-            path.append(current)
-        return path[::-1]
 
 class Dijkstra(PathfindingAlgorithm):
-    def find_path(self, grid: np.ndarray, start: Tuple[int, int], 
-                 target: Tuple[int, int]) -> Tuple[List[Tuple[int, int]], List[Tuple[int, int]]]:
-        if not self.is_valid(grid, target):
-            return [], []
+    """Dijkstra's pathfinding algorithm implementation."""
 
+    def find_path(self,
+                  grid: np.ndarray,
+                  start: Tuple[int, int],
+                  target: Tuple[int, int]) -> Tuple[List[Tuple[int, int]], List[Tuple[int, int]]]:
+        """
+        Find path using Dijkstra's algorithm.
+        
+        Args:
+            grid: 2D numpy array representing the grid
+            start: Starting position (row, col)
+            target: Target position (row, col)
+            
+        Returns:
+            Tuple containing:
+            - List of positions forming the path
+            - List of visited positions
+        """
+        visited = []
         distances = {start: 0}
-        pq = [(0, start)]
         came_from = {}
-        visited = []  # Changed to list to maintain order
+        unvisited = {start}
 
-        while pq:
-            current_dist, current = heapq.heappop(pq)
-            visited.append(current)  # Add to visited list in order
+        while unvisited:
+            current = min(unvisited, key=lambda x: distances.get(x, float('inf')))
 
             if current == target:
-                path = self.reconstruct_path(came_from, current)
+                path = []
+                while current in came_from:
+                    path.append(current)
+                    current = came_from[current]
+                path.append(start)
+                path.reverse()
                 return path, visited
 
-            if current_dist > distances[current]:
-                continue
+            unvisited.remove(current)
+            visited.append(current)
 
-            for neighbor in self.get_neighbors(grid, current):
-                # Calculate distance based on whether it's diagonal or straight movement
-                is_diagonal = abs(neighbor[0] - current[0]) == 1 and abs(neighbor[1] - current[1]) == 1
-                distance = np.sqrt(2) if is_diagonal else 1
-                new_dist = current_dist + distance
+            for neighbor in self.get_neighbors(current, grid):
+                distance = distances[current] + self.heuristic(current, neighbor)
 
-                if neighbor not in distances or new_dist < distances[neighbor]:
-                    distances[neighbor] = new_dist
+                if neighbor not in distances or distance < distances[neighbor]:
+                    distances[neighbor] = distance
                     came_from[neighbor] = current
-                    heapq.heappush(pq, (new_dist, neighbor))
+                    unvisited.add(neighbor)
 
         return [], visited
-
-    def reconstruct_path(self, came_from: dict, current: Tuple[int, int]) -> List[Tuple[int, int]]:
-        path = [current]
-        while current in came_from:
-            current = came_from[current]
-            path.append(current)
-        return path[::-1]
 
 class GreedyBFS(PathfindingAlgorithm):
-    def find_path(self, grid: np.ndarray, start: Tuple[int, int], 
-                 target: Tuple[int, int]) -> Tuple[List[Tuple[int, int]], List[Tuple[int, int]]]:
-        if not self.is_valid(grid, target):
-            return [], []
+    """Greedy Best-First Search algorithm implementation."""
 
-        open_set = [(self.heuristic(start, target), start)]
+    def find_path(self,
+                  grid: np.ndarray,
+                  start: Tuple[int, int],
+                  target: Tuple[int, int]) -> Tuple[List[Tuple[int, int]], List[Tuple[int, int]]]:
+        """
+        Find path using Greedy Best-First Search algorithm.
+        
+        Args:
+            grid: 2D numpy array representing the grid
+            start: Starting position (row, col)
+            target: Target position (row, col)
+            
+        Returns:
+            Tuple containing:
+            - List of positions forming the path
+            - List of visited positions
+        """
+        visited = []
         came_from = {}
-        visited = []  # Changed to list to maintain order
-        g_score = {start: 0}
+        open_set = {start}
 
         while open_set:
-            _, current = heapq.heappop(open_set)
-            visited.append(current)  # Add to visited list in order
+            current = min(open_set, key=lambda x: self.heuristic(x, target))
 
             if current == target:
-                path = self.reconstruct_path(came_from, current)
+                path = []
+                while current in came_from:
+                    path.append(current)
+                    current = came_from[current]
+                path.append(start)
+                path.reverse()
                 return path, visited
 
-            for neighbor in self.get_neighbors(grid, current):
-                if neighbor not in visited:
-                    # Calculate actual distance for better path quality
-                    is_diagonal = abs(neighbor[0] - current[0]) == 1 and abs(neighbor[1] - current[1]) == 1
-                    distance = np.sqrt(2) if is_diagonal else 1
-                    new_g_score = g_score[current] + distance
+            open_set.remove(current)
+            visited.append(current)
 
-                    if neighbor not in g_score or new_g_score < g_score[neighbor]:
-                        came_from[neighbor] = current
-                        g_score[neighbor] = new_g_score
-                        # Use a combination of heuristic and actual distance for better path quality
-                        f_score = self.heuristic(neighbor, target) + new_g_score
-                        heapq.heappush(open_set, (f_score, neighbor))
+            for neighbor in self.get_neighbors(current, grid):
+                if neighbor not in visited:
+                    came_from[neighbor] = current
+                    open_set.add(neighbor)
 
         return [], visited
-
-    def reconstruct_path(self, came_from: dict, current: Tuple[int, int]) -> List[Tuple[int, int]]:
-        path = [current]
-        while current in came_from:
-            current = came_from[current]
-            path.append(current)
-        return path[::-1] 
