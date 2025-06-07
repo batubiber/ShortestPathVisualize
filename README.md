@@ -21,8 +21,9 @@ A Python-based visualization tool that demonstrates and compares different pathf
 ## Requirements
 
 - Python 3.8+
-- Pygame
-- NumPy
+- Pygame 2.5.2
+- NumPy 1.24.3
+- Pytest 8.0.0 (for running tests)
 
 ## Installation
 
@@ -59,11 +60,44 @@ python main.py
 
 ```
 pathfinding-visualizer/
-├── main.py              # Main application and visualization logic
-├── algorithms.py        # Pathfinding algorithm implementations
-├── requirements.txt     # Project dependencies
-└── README.md           # Project documentation
+├── main.py                 # Application entry point
+├── algorithms.py           # Pathfinding algorithm implementations
+├── visualizer.py           # Core visualization logic
+├── ui_components.py        # UI component classes
+├── Version.py              # Version information and history
+├── requirements.txt        # Project dependencies
+├── tests/                  # Test directory
+│   ├── __init__.py
+│   └── test_algorithms.py  # Algorithm test cases
+└── README.md               # Project documentation
 ```
+
+## Testing
+
+The project includes comprehensive unit tests for all pathfinding algorithms. The tests cover:
+
+1. Basic pathfinding in empty grids
+2. Pathfinding around obstacles
+3. Handling cases with no valid path
+4. Different start/end positions
+
+To run the tests:
+
+1. Make sure you have all dependencies installed:
+```bash
+pip install -r requirements.txt
+```
+
+2. Run the tests using pytest:
+```bash
+pytest tests/
+```
+
+The tests verify that:
+- All algorithms can find valid paths
+- Paths are continuous and don't go through obstacles
+- Algorithms handle cases with no valid path
+- Paths start and end at the correct points
 
 ## Implementation Details
 

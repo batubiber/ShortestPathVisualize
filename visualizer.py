@@ -196,8 +196,7 @@ class PathfindingVisualizer:
                         self.start = (row, col)
                         self.setting_start = False
                     else:
-                        self.target = (row, col)
-                        self.start_visualization()
+                        self.target = (row, col)  # Just set the target, don't start visualization
         
         elif event.type == pygame.MOUSEBUTTONUP:
             if event.button == 1:
